@@ -3,7 +3,7 @@ class Game < ApplicationRecord
   has_many :achievements, through: :games_achievements
   has_many :gameships
 
-  enum genre: {
+  enum :genre, {
     action: 0,
     rpg: 1,
     strategy: 2,

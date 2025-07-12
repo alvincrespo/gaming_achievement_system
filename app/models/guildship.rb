@@ -1,7 +1,7 @@
 class Guildship < ApplicationRecord
   belongs_to :guild
 
-  enum guild_type: {
+  enum :guild_type, {
     casual: 0,
     competitive: 1,
     esports: 2,
