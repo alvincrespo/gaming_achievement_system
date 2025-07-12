@@ -74,3 +74,7 @@ The application is in early scaffolding stage with:
 - All models are currently bare - add relationships, validations, and business logic as needed
 - The system is designed for multi-tenancy through guild scoping
 - Achievement unlocking is the core business operation involving players, achievements, and guilds
+
+### Git Workflow
+
+- Git commit and push changes
