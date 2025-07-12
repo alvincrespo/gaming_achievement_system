@@ -5,24 +5,26 @@ class AchievementQueryStrategy
     @guild_id = guild_id
   end
 
+  def base_latest_unlock_relation
+    @base_latest_unlock_relation ||=
+      AchievementUnlock.joins(achievement: { games_achievements: { game: { gameships: :guildships } } })
+  end
+
+  def latest_unlock_subquery_sql
+    base_latest_unlock_relation
+      .where(deleted_at: nil)
+      .where(guildships: { guild_id: guild_id })
+      .group(:player_id, :achievement_id)
+      .select("MAX(achievement_unlocks.id) as unlock_id")
+      .to_sql
+  end
+
   # Strategy 1: Using JOIN approach
   def latest_unlocks_with_joins
-    AchievementUnlock
-      .joins(achievement: { games_achievements: { game: { gameships: :guildships } } })
+    base_latest_unlock_relation
       .joins(
         <<-SQL
-          INNER JOIN (
-            SELECT MAX(au.id) as unlock_id
-            FROM achievement_unlocks au
-            INNER JOIN achievements ON achievements.id = au.achievement_id
-            INNER JOIN games_achievements ON games_achievements.achievement_id = achievements.id
-            INNER JOIN games ON games.id = games_achievements.game_id
-            INNER JOIN gameships ON gameships.game_id = games.id
-            INNER JOIN guildships ON guildships.guild_id = gameships.guild_id
-            WHERE au.deleted_at IS NULL
-              AND guildships.guild_id = #{guild_id}
-            GROUP BY au.player_id, au.achievement_id
-          ) AS latest ON latest.unlock_id = achievement_unlocks.id
+          INNER JOIN (#{latest_unlock_subquery_sql}) AS latest ON latest.unlock_id = achievement_unlocks.id
         SQL
       )
       .where("achievement_unlocks.deleted_at IS NULL")
