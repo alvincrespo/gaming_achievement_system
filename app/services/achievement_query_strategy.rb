@@ -22,9 +22,7 @@ class AchievementQueryStrategy
   def latest_unlocks_with_joins
     base_latest_unlock_relation
       .joins(
-        <<-SQL
-          INNER JOIN (#{latest_unlock_subquery}) AS latest ON latest.unlock_id = achievement_unlocks.id
-        SQL
+        Arel.sql("INNER JOIN (#{latest_unlock_subquery}) AS latest ON latest.unlock_id = achievement_unlocks.id")
       )
       .where("achievement_unlocks.deleted_at IS NULL")
       .where("guildships.guild_id = ?", guild_id)
