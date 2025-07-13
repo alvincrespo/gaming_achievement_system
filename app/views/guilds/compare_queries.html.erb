@@ -1,0 +1,73 @@
+<div class="container" data-controller="benchmark" data-benchmark-url-value="<%= benchmark_guild_path(@guild) %>">
+  <h1>Query Performance Comparison</h1>
+  <h2><%= @guild.name %></h2>
+
+  <div class="alert alert-warning">
+    <p><strong>Guild Statistics:</strong></p>
+    <ul>
+      <li>Total Achievement Unlocks: <%= number_with_delimiter(@guild.achievement_unlocks.count) %></li>
+      <li>Active Players: <%= number_with_delimiter(@guild.achievement_unlocks.select(:player_id).distinct.count) %></li>
+      <li>Guild Size Category: <%= @guild.guild_size_category %></li>
+    </ul>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <h3>JOIN Approach</h3>
+      <pre class="bg-light p-3"><%= join_query_example %></pre>
+      <p class="text-muted">This approach creates massive intermediate result sets when joining all tables.
+      Performance degrades exponentially with guild size.</p>
+    </div>
+
+    <div class="col-md-6">
+      <h3>Window Function Approach</h3>
+      <pre class="bg-light p-3"><%= window_function_example %></pre>
+      <p class="text-muted">Pre-filters eligible achievements, then uses ROW_NUMBER() to efficiently find latest unlocks.
+      Scales much better with large datasets.</p>
+    </div>
+  </div>
+
+  <div class="text-center mt-4">
+    <button data-benchmark-target="button" 
+            data-action="click->benchmark#runBenchmark"
+            class="btn btn-lg btn-primary">
+      Run Performance Benchmark
+    </button>
+  </div>
+
+  <div data-benchmark-target="results" class="mt-4" style="display: none;">
+    <h3>Benchmark Results</h3>
+    <div class="card">
+      <div class="card-body">
+        <div data-benchmark-target="content">
+          <!-- Template for benchmark results -->
+          <template data-benchmark-target="template">
+            <div class="row">
+              <div class="col-md-6">
+                <h4>Window Function Approach</h4>
+                <p>Time: <code data-benchmark-target="windowTime"></code></p>
+                <p>Records: <span data-benchmark-target="windowCount"></span></p>
+              </div>
+              <div class="col-md-6">
+                <h4>JOIN Approach</h4>
+                <p>Time: <code data-benchmark-target="joinTime"></code></p>
+                <p data-benchmark-target="joinRecords">Records: <span data-benchmark-target="joinCount"></span></p>
+                <p data-benchmark-target="joinError" class="text-danger" style="display: none;"></p>
+              </div>
+            </div>
+            <div data-benchmark-target="speedupAlert" class="alert alert-success text-center mt-3" style="display: none;">
+              Window function is <strong data-benchmark-target="speedupValue"></strong> faster!
+            </div>
+          </template>
+          
+          <!-- Error template -->
+          <template data-benchmark-target="errorTemplate">
+            <div class="alert alert-danger">
+              <span data-benchmark-target="errorMessage"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

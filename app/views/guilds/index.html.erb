@@ -1,0 +1,36 @@
+<div class="container">
+  <h1>Gaming Guilds</h1>
+
+  <div class="alert alert-info">
+    <p>This demo shows how query performance varies dramatically based on guild size.
+    Notice how "Mega" guilds with 10k+ achievement unlocks require window functions for acceptable performance.</p>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Guild Name</th>
+        <th>Unlocks</th>
+        <th>Size Category</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @guilds.each do |guild| %>
+        <tr>
+          <td><%= link_to guild.name, guild_path(guild) %></td>
+          <td><%= number_with_delimiter(guild.unlock_count) %></td>
+          <td>
+            <span class="badge <%= guild_size_class(guild.unlock_count) %>">
+              <%= guild_size_label(guild.unlock_count) %>
+            </span>
+          </td>
+          <td>
+            <%= link_to "View", guild_path(guild), class: "btn btn-sm btn-primary" %>
+            <%= link_to "Compare Queries", compare_queries_guild_path(guild), class: "btn btn-sm btn-success" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
