@@ -69,8 +69,8 @@ class AchievementQueryStrategy
 
   # Benchmark method to compare both approaches
   def benchmark_approaches
-    require 'benchmark'
-    require 'timeout'
+    require "benchmark"
+    require "timeout"
 
     results = {
       guild_id: guild_id,
@@ -90,7 +90,7 @@ class AchievementQueryStrategy
     # Benchmark join approach (with timeout protection)
     begin
       results[:join] = Benchmark.measure do
-        Timeout::timeout(10) do
+        Timeout.timeout(10) do
           results[:join_count] = latest_unlocks_with_joins.count
         end
       end.real
