@@ -39,7 +39,11 @@ class AchievementQueryStrategy
     return AchievementUnlock.none if eligible_achievement_ids.empty?
 
     # Step 2: Use window function to get latest unlocks
-    sql = <<-SQL
+    AchievementUnlock.find_by_sql([ window_function_sql, guild_id, eligible_achievement_ids ])
+  end
+
+  def window_function_sql
+    <<-SQL
       SELECT outer_unlocks.*
       FROM (
         SELECT inner_unlocks.*
@@ -61,8 +65,6 @@ class AchievementQueryStrategy
       INNER JOIN games ON games.id = games_achievements.game_id
       WHERE outer_unlocks.deleted_at IS NULL
     SQL
-
-    AchievementUnlock.find_by_sql([sql, guild_id, eligible_achievement_ids])
   end
 
   # Benchmark method to compare both approaches
