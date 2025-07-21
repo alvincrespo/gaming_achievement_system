@@ -1,12 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["button", "results", "content", "template", "errorTemplate",
-                   "windowTime", "windowCount", "joinTime", "joinCount",
-                   "joinRecords", "joinError", "speedupAlert", "speedupValue"]
+  static targets = ["button", "results", "resultsList", "resultItemTemplate", "resultsWrapperTemplate", "resultsTemplate", "errorTemplate"]
   static values = { url: String }
 
   async runBenchmark() {
+    // Prevent multiple concurrent requests
+    if (this.buttonTarget.disabled) {
+      return
+    }
+
     this.setLoadingState()
 
     try {
@@ -17,6 +20,10 @@ export default class extends Controller {
           'Content-Type': 'application/json'
         }
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
       const data = await response.json()
       this.displayResults(data)
@@ -31,43 +38,46 @@ export default class extends Controller {
   setLoadingState() {
     this.buttonTarget.disabled = true
     this.buttonTarget.textContent = 'Running benchmark...'
+    this.buttonTarget.classList.add('opacity-75', 'cursor-not-allowed')
   }
 
   resetButtonState() {
     this.buttonTarget.disabled = false
     this.buttonTarget.textContent = 'Run Performance Benchmark'
+    this.buttonTarget.classList.remove('opacity-75', 'cursor-not-allowed')
   }
 
   displayResults(data) {
-    // Clone the template
-    const template = this.templateTarget.content.cloneNode(true)
+    // Clone the results template
+    const template = this.resultsTemplateTarget.content.cloneNode(true)
 
-    // Populate template with data
-    template.querySelector('[data-benchmark-target="windowTime"]').textContent = `${data.window_function.toFixed(3)}s`
-    template.querySelector('[data-benchmark-target="windowCount"]').textContent = data.window_function_count
-    template.querySelector('[data-benchmark-target="joinTime"]').textContent = `${data.join.toFixed(3)}s`
+    // Populate winner data
+    template.querySelector('[data-benchmark-target="winnerTitle"]').textContent = `${data.winner.type} Approach`
+    template.querySelector('[data-benchmark-target="winnerTime"]').textContent = `${data.winner.execution_time.toFixed(3)}s`
+    template.querySelector('[data-benchmark-target="winnerCount"]').textContent = data.winner.count.toLocaleString()
 
-    // Handle join results or error
-    if (data.join_error) {
-      template.querySelector('[data-benchmark-target="joinRecords"]').style.display = 'none'
-      const joinError = template.querySelector('[data-benchmark-target="joinError"]')
-      joinError.textContent = data.join_error
-      joinError.style.display = 'block'
-    } else {
-      template.querySelector('[data-benchmark-target="joinCount"]').textContent = data.join_count
-    }
+    // Populate loser data
+    template.querySelector('[data-benchmark-target="loserTitle"]').textContent = `${data.loser.type} Approach`
+    template.querySelector('[data-benchmark-target="loserTime"]').textContent = `${data.loser.execution_time.toFixed(3)}s`
+    template.querySelector('[data-benchmark-target="loserCount"]').textContent = data.loser.count.toLocaleString()
 
-    // Show speedup if available
-    if (data.speedup) {
-      const speedupAlert = template.querySelector('[data-benchmark-target="speedupAlert"]')
-      speedupAlert.querySelector('[data-benchmark-target="speedupValue"]').textContent = `${data.speedup}x`
-      speedupAlert.style.display = 'block'
-    }
+    // Set the speedup message with timestamp for freshness indicator
+    const now = new Date().toLocaleTimeString()
+    const speedupMessage = `${data.winner.type} approach is <strong>${data.speedup}x</strong> faster than the ${data.loser.type} approach. <em>(Run at ${now})</em>`
+    template.querySelector('[data-benchmark-target="speedupMessage"]').innerHTML = speedupMessage
 
-    // Replace content and show results
-    this.contentTarget.innerHTML = ''
-    this.contentTarget.appendChild(template)
-    this.resultsTarget.style.display = 'block'
+    const resultItemTemplate = this.resultItemTemplateTarget.content.cloneNode(true)
+    resultItemTemplate.querySelector('[data-benchmark-target="content"]').appendChild(template)
+
+    // Replace content and show results with a fresh state
+    this.resultsListTarget.appendChild(resultItemTemplate)
+    this.resultsTarget.removeAttribute('style')
+
+    // Scroll to results for better UX on subsequent runs
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: 'smooth'
+    })
   }
 
   displayError(message) {

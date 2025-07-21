@@ -1,0 +1,189 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <!-- Guild Header -->
+  <div class="sm:flex sm:items-center">
+    <div class="sm:flex-auto">
+      <h1 class="text-base font-semibold text-gray-900"><%= @guild.name %></h1>
+      <p class="mt-2 text-sm text-gray-700">Guild details and achievement statistics</p>
+    </div>
+    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+      <%= link_to "Compare Queries", compare_queries_guild_path(@guild), class: "block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" %>
+    </div>
+  </div>
+
+  <!-- Guild Stats -->
+  <div class="mt-8">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div class="bg-white overflow-hidden shadow-sm ring-1 ring-black/5 rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Total Members</dt>
+                <dd class="text-lg font-medium text-gray-900"><%= @guild_players_count %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white overflow-hidden shadow-sm ring-1 ring-black/5 rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Achievement Unlocks</dt>
+                <dd class="text-lg font-medium text-gray-900"><%= number_with_delimiter(@guild.achievement_unlocks.count) %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white overflow-hidden shadow-sm ring-1 ring-black/5 rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Guild Size</dt>
+                <dd class="text-lg font-medium text-gray-900">
+                  <span class="badge <%= guild_size_class(@guild.achievement_unlocks.count) %>">
+                    <%= guild_size_label(@guild.achievement_unlocks.count) %>
+                  </span>
+                </dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Achievement Unlocks -->
+  <div class="mt-12">
+    <div class="sm:flex sm:items-center">
+      <div class="sm:flex-auto">
+        <h2 class="text-base font-semibold text-gray-900">Recent Achievement Unlocks</h2>
+        <p class="mt-2 text-sm text-gray-700">Latest achievements unlocked by guild members</p>
+      </div>
+    </div>
+    <div class="mt-8 flow-root">
+      <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+          <div class="overflow-hidden shadow-sm ring-1 ring-black/5 sm:rounded-lg">
+            <table class="min-w-full divide-y divide-gray-300">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-6">Player</th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Achievement</th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Game</th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Unlocked At</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 bg-white">
+                <% @recent_unlocks.each do |unlock| %>
+                  <tr>
+                    <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-6">
+                      <%= unlock.player.display_name %>
+                    </td>
+                    <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500">
+                      <%= unlock.achievement.name %>
+                    </td>
+                    <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500">
+                      <%= unlock.achievement.games.first&.name || "N/A" %>
+                    </td>
+                    <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500">
+                      <%= time_ago_in_words(unlock.unlocked_at) %> ago
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Players -->
+  <div class="mt-12">
+    <div class="sm:flex sm:items-center">
+      <div class="sm:flex-auto">
+        <h2 class="text-base font-semibold text-gray-900">Top Achieving Players</h2>
+        <p class="mt-2 text-sm text-gray-700">Guild members with the most achievement unlocks</p>
+      </div>
+    </div>
+    <div class="mt-8 flow-root">
+      <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+          <div class="overflow-hidden shadow-sm ring-1 ring-black/5 sm:rounded-lg">
+            <table class="min-w-full divide-y divide-gray-300">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-6">Rank</th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Player Name</th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total Achievements</th>
+                  <th scope="col" class="relative py-3.5 pr-4 pl-3 sm:pr-6">
+                    <span class="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 bg-white">
+                <% @top_players.each_with_index do |player, index| %>
+                  <tr>
+                    <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-6">
+                      <div class="flex items-center">
+                        <% if index < 3 %>
+                          <div class="w-6 h-6 rounded-full <%= index == 0 ? 'bg-yellow-400' : index == 1 ? 'bg-gray-300' : 'bg-yellow-600' %> flex items-center justify-center mr-2">
+                            <span class="text-xs font-bold text-white"><%= index + 1 %></span>
+                          </div>
+                        <% else %>
+                          <span class="text-sm text-gray-500 mr-8">#<%= index + 1 %></span>
+                        <% end %>
+                      </div>
+                    </td>
+                    <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500">
+                      <%= player.display_name %>
+                    </td>
+                    <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500">
+                      <%= number_with_delimiter(player.total_achievements) %>
+                    </td>
+                    <td class="relative py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-6">
+                      <a href="#" class="text-indigo-600 hover:text-indigo-900">View Profile</a>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="mt-8 flex justify-between">
+    <%= link_to "← Back to Guilds", guilds_path, class: "text-indigo-600 hover:text-indigo-900" %>
+    <%= link_to "View All Achievements →", achievements_guild_path(@guild), class: "text-indigo-600 hover:text-indigo-900" %>
+  </div>
+</div>

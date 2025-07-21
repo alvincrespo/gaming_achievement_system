@@ -9,7 +9,7 @@ class GuildsController < ApplicationController
     @guild = Guild.find(params[:id])
     @recent_unlocks = @guild.achievement_unlocks
                             .active
-                            .includes(:player, :achievement)
+                            .includes(:player, achievement: :games)
                             .order(unlocked_at: :desc)
                             .limit(10)
     @top_players = Player.joins(:achievement_unlocks)
@@ -18,6 +18,10 @@ class GuildsController < ApplicationController
                          .order("COUNT(achievement_unlocks.id) DESC")
                          .limit(10)
                          .select("players.*, COUNT(achievement_unlocks.id) as total_achievements")
+    @guild_players_count = Player.joins(:achievement_unlocks)
+                                 .where(achievement_unlocks: { guild_id: @guild.id })
+                                 .distinct
+                                 .count
   end
 
   def achievements

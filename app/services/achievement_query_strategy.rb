@@ -11,21 +11,22 @@ class AchievementQueryStrategy
   end
 
   def latest_unlock_subquery
-    base_latest_unlock_relation
+    AchievementUnlock
       .where(deleted_at: nil)
-      .where(guildships: { guild_id: guild_id })
+      .where(guild_id: guild_id)
       .group(:player_id, :achievement_id)
       .select("MAX(achievement_unlocks.id) as unlock_id")
   end
 
   # Strategy 1: Using JOIN approach
   def latest_unlocks_with_joins
-    base_latest_unlock_relation
+    AchievementUnlock
       .joins(
-        Arel.sql("INNER JOIN (#{latest_unlock_subquery}) AS latest ON latest.unlock_id = achievement_unlocks.id")
+        Arel.sql("INNER JOIN (#{latest_unlock_subquery.to_sql}) AS latest ON latest.unlock_id = achievement_unlocks.id")
       )
+      .joins(achievement: { games_achievements: :game })
       .where("achievement_unlocks.deleted_at IS NULL")
-      .where("guildships.guild_id = ?", guild_id)
+      .where("achievement_unlocks.guild_id = ?", guild_id)
   end
 
   # Strategy 2: Using Window Function with pre-filtering
@@ -40,28 +41,25 @@ class AchievementQueryStrategy
   end
 
   def window_function_sql
-    <<-SQL
-      SELECT outer_unlocks.*
-      FROM (
-        SELECT inner_unlocks.*
-        FROM (
-          SELECT achievement_unlocks.*,
-                 ROW_NUMBER() OVER (
-                   PARTITION BY player_id, achievement_id
-                   ORDER BY id DESC
-                 ) AS rn
-          FROM achievement_unlocks
-          WHERE deleted_at IS NULL
-            AND guild_id = ?
-            AND achievement_id IN (?)
-        ) inner_unlocks
-        WHERE rn = 1
-      ) AS outer_unlocks
-      INNER JOIN achievements ON achievements.id = outer_unlocks.achievement_id
-      INNER JOIN games_achievements ON games_achievements.achievement_id = achievements.id
-      INNER JOIN games ON games.id = games_achievements.game_id
-      WHERE outer_unlocks.deleted_at IS NULL
-    SQL
+<<-SQL
+  SELECT outer_unlocks.*
+  FROM (
+    SELECT inner_unlocks.*
+    FROM (
+      SELECT achievement_unlocks.*,
+              ROW_NUMBER() OVER (PARTITION BY player_id, achievement_id ORDER BY id DESC) AS rn
+      FROM achievement_unlocks
+      WHERE deleted_at IS NULL
+        AND guild_id = ?
+        AND achievement_id IN (?)
+    ) inner_unlocks
+    WHERE rn = 1
+  ) AS outer_unlocks
+  INNER JOIN achievements ON achievements.id = outer_unlocks.achievement_id
+  INNER JOIN games_achievements ON games_achievements.achievement_id = achievements.id
+  INNER JOIN games ON games.id = games_achievements.game_id
+  WHERE outer_unlocks.deleted_at IS NULL
+SQL
   end
 
   # Benchmark method to compare both approaches
@@ -69,34 +67,64 @@ class AchievementQueryStrategy
     require "benchmark"
     require "timeout"
 
-    results = {
-      guild_id: guild_id,
-      unlock_count: AchievementUnlock.where(guild_id: guild_id).count,
-      eligible_achievements: Achievement.eligible_for_guild(guild_id).count
-    }
+    # Get baseline data
+    guild_id_value = guild_id
 
     # Warm up
     latest_unlocks_with_window_function rescue nil
     latest_unlocks_with_joins rescue nil
 
     # Benchmark window function approach
-    results[:window_function] = Benchmark.measure do
-      results[:window_function_count] = latest_unlocks_with_window_function.size
+    window_function_count = 0
+    window_function_time = Benchmark.measure do
+      window_function_count = latest_unlocks_with_window_function.size
     end.real
 
     # Benchmark join approach (with timeout protection)
+    join_count = 0
+    join_time = nil
+    join_error = nil
+
     begin
-      results[:join] = Benchmark.measure do
+      join_time = Benchmark.measure do
         Timeout.timeout(10) do
-          results[:join_count] = latest_unlocks_with_joins.count
+          join_count = latest_unlocks_with_joins.count
         end
       end.real
     rescue Timeout::Error
-      results[:join] = 10.0
-      results[:join_error] = "Query timed out after 10 seconds"
+      join_time = 10.0
+      join_error = "Query timed out after 10 seconds"
     end
 
-    results[:speedup] = (results[:join] / results[:window_function]).round(2) if results[:join] > 0
-    results
+    # Create window function and join objects
+    window_function_obj = {
+      count: window_function_count,
+      execution_time: window_function_time,
+      type: "Window Function"
+    }
+
+    join_obj = {
+      count: join_count,
+      execution_time: join_time,
+      type: "JOIN"
+    }
+
+    # Determine winner and loser
+    if join_error || window_function_time < join_time
+      winner = window_function_obj
+      loser = join_obj
+      speedup = join_error ? "N/A" : (join_time / window_function_time).round(2)
+    else
+      winner = join_obj
+      loser = window_function_obj
+      speedup = (window_function_time / join_time).round(2)
+    end
+
+    {
+      guild_id: guild_id_value,
+      winner: winner,
+      loser: loser,
+      speedup: speedup
+    }
   end
 end
