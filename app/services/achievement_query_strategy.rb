@@ -70,10 +70,6 @@ SQL
     # Get baseline data
     guild_id_value = guild_id
 
-    # Warm up
-    latest_unlocks_with_window_function rescue nil
-    latest_unlocks_with_joins rescue nil
-
     # Benchmark window function approach
     window_function_count = 0
     window_function_time = Benchmark.measure do
@@ -82,19 +78,9 @@ SQL
 
     # Benchmark join approach (with timeout protection)
     join_count = 0
-    join_time = nil
-    join_error = nil
-
-    begin
-      join_time = Benchmark.measure do
-        Timeout.timeout(10) do
-          join_count = latest_unlocks_with_joins.count
-        end
-      end.real
-    rescue Timeout::Error
-      join_time = 10.0
-      join_error = "Query timed out after 10 seconds"
-    end
+    join_time = Benchmark.measure do
+      join_count = latest_unlocks_with_joins.count
+    end.real
 
     # Create window function and join objects
     window_function_obj = {
@@ -110,10 +96,10 @@ SQL
     }
 
     # Determine winner and loser
-    if join_error || window_function_time < join_time
+    if window_function_time < join_time
       winner = window_function_obj
       loser = join_obj
-      speedup = join_error ? "N/A" : (join_time / window_function_time).round(2)
+      speedup = (join_time / window_function_time).round(2)
     else
       winner = join_obj
       loser = window_function_obj
