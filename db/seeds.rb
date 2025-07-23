@@ -19,6 +19,7 @@ class GamingSeedGenerator
       create_achievement_categories
       create_games_achievements
       create_achievement_unlocks
+      create_window_function_demo_guild
       print_statistics
     end
   end
@@ -234,27 +235,27 @@ class GamingSeedGenerator
   def create_achievement_unlocks
     puts "\n7. Creating Achievement Unlocks..."
 
-    small_guilds = Guild.limit(900)
-    medium_guilds = Guild.offset(900).limit(90)
-    mega_guilds = Guild.offset(990).limit(10)
+    small_guilds = Guild.where.not(name: "Window Function Demo Guild").limit(900)
+    medium_guilds = Guild.where.not(name: "Window Function Demo Guild").offset(900).limit(90)
+    mega_guilds = Guild.where.not(name: "Window Function Demo Guild").offset(990).limit(10)
 
     progressbar = ProgressBar.create(total: 1000, format: '%t: |%B| %p%% %e')
 
-    # Small guilds: 50-500 unlocks
-    create_unlocks_for_guilds(small_guilds, 50..500, progressbar)
+    # Small guilds: 50-500 unlocks with LOW duplication (1-2 attempts per combo)
+    create_unlocks_for_guilds(small_guilds, 50..500, 1..2, progressbar)
 
-    # Medium guilds: 500-5000 unlocks
-    create_unlocks_for_guilds(medium_guilds, 500..5000, progressbar)
+    # Medium guilds: 500-5000 unlocks with MEDIUM duplication (2-5 attempts per combo)
+    create_unlocks_for_guilds(medium_guilds, 500..5000, 2..5, progressbar)
 
-    # Mega guilds: 5000-60000 unlocks
-    create_unlocks_for_guilds(mega_guilds, 5000..60000, progressbar)
+    # Mega guilds: 5000-60000 unlocks with HIGH duplication (5-20 attempts per combo)
+    create_unlocks_for_guilds(mega_guilds, 5000..60000, 5..20, progressbar)
 
     @stats[:achievement_unlocks] = AchievementUnlock.count
   end
 
-  def create_unlocks_for_guilds(guilds, count_range, progressbar)
+  def create_unlocks_for_guilds(guilds, count_range, duplication_range, progressbar)
     guilds.each do |guild|
-      count = rand(count_range)
+      total_unlocks = rand(count_range)
 
       eligible_achievement_ids = Achievement.eligible_for_guild(guild.id)
       next if eligible_achievement_ids.empty?
@@ -267,30 +268,172 @@ class GamingSeedGenerator
 
       guild_players = Player.all.sample(player_count)
 
-      count.times.each_slice(1000) do |batch|
-        unlocks = batch.map do
-          player = guild_players.sample
-          achievement_id = eligible_achievement_ids.sample
+      # Calculate combinations needed based on duplication
+      avg_duplication = (duplication_range.min + duplication_range.max) / 2.0
+      combinations_needed = (total_unlocks / avg_duplication).to_i
 
-          is_deleted = [ true, false ].sample
-          progress = rand(0..100)
-          unlock_time = rand(2.years.ago..Time.current)
+      # Create unique combinations first
+      combinations = []
+      combinations_needed.times do
+        combinations << {
+          player: guild_players.sample,
+          achievement_id: eligible_achievement_ids.sample
+        }
+      end
 
-          {
-            player_id: player.id,
-            achievement_id: achievement_id,
+      batch = []
+      combinations.each do |combo|
+        # Create multiple attempts for this combination
+        attempts = rand(duplication_range)
+        base_time = rand(6.months.ago..1.week.ago)
+
+        attempts.times do |attempt|
+          # Most records should be active (not deleted) to show true duplication
+          is_deleted = rand(100) < 10  # Only 10% deleted
+
+          # Progress increases with attempts
+          progress =
+            if attempt == attempts - 1
+              rand(90..100)  # Last attempt usually successful
+            else
+              rand(10..89)   # Earlier attempts less successful
+            end
+
+          batch << {
+            player_id: combo[:player].id,
+            achievement_id: combo[:achievement_id],
             guild_id: guild.id,
-            unlocked_at: progress == 100 ? unlock_time : nil,
+            unlocked_at: progress == 100 ? base_time + attempt.days : nil,
             progress_percentage: progress,
-            deleted_at: is_deleted ? rand(unlock_time..Time.current) : nil,
-            created_at: unlock_time,
+            deleted_at: is_deleted ? base_time + (attempt + 1).days : nil,
+            created_at: base_time + attempt.days,
             updated_at: Time.current
           }
+
+          if batch.size >= 1000
+            AchievementUnlock.insert_all(batch)
+            batch = []
+          end
         end
-        AchievementUnlock.insert_all(unlocks)
+      end
+
+      # Insert remaining
+      AchievementUnlock.insert_all(batch) if batch.any?
+      progressbar.increment
+    end
+  end
+
+  def create_window_function_demo_guild
+    puts "\n8. Creating Window Function Demo Guild with HIGH duplication..."
+
+    # Create a special guild designed to show window function superiority
+    demo_guild = Guild.create!(
+      name: "Window Function Demo Guild",
+      description: "Guild with extreme data patterns to demonstrate window function performance",
+      tag: "WFDG",
+      created_at: Time.current,
+      updated_at: Time.current
+    )
+
+    Guildship.create!(
+      guild: demo_guild,
+      guild_type: :esports,
+      region: 'NA'
+    )
+
+    # Create category and link games
+    category = AchievementCategory.create!(
+      guild: demo_guild,
+      name: "#{demo_guild.name} - Competitive",
+      description: "High-stakes competitive achievements"
+    )
+
+    Game.all.sample(20).each do |game|
+      Gameship.create!(
+        game: game,
+        achievement_category: category,
+        guild: demo_guild
+      )
+    end
+
+    # Use specific subset for controlled duplication
+    demo_players = Player.limit(200).to_a
+    demo_achievements = Achievement.limit(50).to_a
+
+    puts "  Creating ~200,000 records with 10-50 attempts per combination..."
+    progressbar = ProgressBar.create(total: demo_players.count, format: '  Progress: |%B| %p%% %e')
+
+    batch = []
+    demo_players.each do |player|
+      demo_achievements.each do |achievement|
+        # HIGH duplication: 10-50 attempts per combination
+        attempts = rand(10..50)
+        base_time = rand(12.months.ago..1.month.ago)
+
+        attempts.times do |attempt|
+          # Keep most records active to maximize duplication effect
+          is_deleted = rand(100) < 5  # Only 5% deleted
+
+          # Varied progress to simulate real attempts
+          progress =
+            case attempt
+            when 0..attempts/3 then rand(1..40)
+            when attempts/3..2*attempts/3 then rand(40..80)
+            else rand(80..100)
+            end
+
+          batch << {
+            player_id: player.id,
+            achievement_id: achievement.id,
+            guild_id: demo_guild.id,
+            unlocked_at: progress == 100 ? base_time + (attempt * 3).hours : nil,
+            progress_percentage: progress,
+            deleted_at: is_deleted ? base_time + (attempt * 3 + 1).hours : nil,
+            created_at: base_time + (attempt * 3).hours,
+            updated_at: Time.current
+          }
+
+          if batch.size >= 5000
+            AchievementUnlock.insert_all(batch)
+            batch = []
+          end
+        end
       end
       progressbar.increment
     end
+
+    # Insert remaining
+    AchievementUnlock.insert_all(batch) if batch.any?
+
+    # Print demo guild stats
+    stats = ActiveRecord::Base.connection.execute(<<-SQL
+      SELECT
+        COUNT(*) as total,
+        AVG(cnt) as avg_duplication,
+        MAX(cnt) as max_duplication
+      FROM (
+        SELECT COUNT(*) as cnt
+        FROM achievement_unlocks
+        WHERE guild_id = #{demo_guild.id} AND deleted_at IS NULL
+        GROUP BY player_id, achievement_id
+      ) t
+    SQL
+    ).first
+
+    active = ActiveRecord::Base.connection.execute(<<-SQL
+      SELECT COUNT(*) as active
+      FROM achievement_unlocks
+      WHERE guild_id = #{demo_guild.id} AND deleted_at IS NULL
+    SQL
+    ).first
+
+    puts "\n  Window Function Demo Guild created:"
+    puts "    - Guild ID: #{demo_guild.id}"
+    puts "    - Total records: #{stats[0]}"
+    puts "    - Active records: #{active[0]}"
+    puts "    - Average duplication: #{'%.1f' % stats[2]}"
+    puts "    - Max duplication: #{stats[3]}"
+    puts "\n  This guild is optimized to show window function performance advantages!"
   end
 
   def generate_guild_tag
@@ -314,16 +457,33 @@ class GamingSeedGenerator
     puts "Achievements: #{@stats[:achievements]}"
     puts "Game-Achievement Relations: #{@stats[:games_achievements]}"
     puts "Achievement Unlocks: #{@stats[:achievement_unlocks]}"
-    puts "\nTop 10 Guilds by Unlock Count:"
 
+    puts "\nTop 10 Guilds by Unlock Count:"
     Guild.joins(:achievement_unlocks)
          .group(:id)
          .order('COUNT(achievement_unlocks.id) DESC')
          .limit(10)
-         .pluck(:name, 'COUNT(achievement_unlocks.id)')
-         .each do |name, count|
-      puts "  #{name}: #{count} unlocks"
+         .pluck(:name, 'COUNT(achievement_unlocks.id)', :id)
+         .each do |name, count, id|
+      # Get duplication stats for each guild
+      stats = ActiveRecord::Base.connection.execute(<<-SQL
+        SELECT AVG(cnt) as avg_dup
+        FROM (
+          SELECT COUNT(*) as cnt
+          FROM achievement_unlocks
+          WHERE guild_id = #{id} AND deleted_at IS NULL
+          GROUP BY player_id, achievement_id
+        ) t
+      SQL
+      ).first
+
+      avg_dup = stats[0] || 1.0
+      puts "  #{name} (ID: #{id}): #{count} unlocks, avg duplication: #{'%.1f' % avg_dup}"
     end
+
+    puts "\n🎮 To test query performance:"
+    puts "  1. For JOIN vs Window comparison: rails gaming:window_winning_scenarios guild_id=<id>"
+    puts "  2. Look for 'Window Function Demo Guild' - it's optimized to show window function advantages"
   end
 end
 
