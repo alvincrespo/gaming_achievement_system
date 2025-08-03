@@ -263,9 +263,3 @@ The application demonstrates that:
 ## 📄 License
 
 This project is open source and available under the [MIT License](LICENSE).
-
-## 🙏 Acknowledgments
-
-- MySQL team for Window Function implementation
-- Rails community for the excellent framework
-- All contributors to the libraries used in this project
